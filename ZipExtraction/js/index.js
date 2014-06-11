@@ -17,30 +17,14 @@
  * under the License.
  */
 
-var totalFolders = 3;
-
-var folderArray = new Array();
-folderArray[0] = "spr";
-folderArray[1] = "spf";
-folderArray[2] = "publications";
-
-var downloadArray = new Array();
-downloadArray[0] = "http://192.168.117.21/skillmatrix/downloads/file.zip";
-downloadArray[1] = "http://192.168.117.21/skillmatrix/downloads/file.zip";
-downloadArray[2] = "http://192.168.117.21/skillmatrix/downloads/file.zip";
-
-var downloadError = new Array();
-downloadError[0] = "1"
-downloadError[1] = "1"
-downloadError[2] = "1"
-
-var folderPathArray = new Array();
-folderPathArray[0] = "";
-folderPathArray[1] = "";
-folderPathArray[2] = "";
-
-
-var statusDom ;
+var statusDom = '';
+var appDirectory = 'MyFileApp';
+var audios = [];
+var videos = [];
+var images = [];
+var description = [];
+var myMedia = null;
+var playing = false;
 
 var app = {
     // Application Constructor
@@ -74,21 +58,16 @@ var app = {
 
         statusDom = document.querySelector('#status');
 
-        //Get File System
-        document.addEventListener('online', downloadAgain, false);
-        window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
-        window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, gotFS, fail);       
+        updateMedia();
+        //Get Device's FileSystem
+        window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
+        window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, gotFS, fail);
     }
 };
 
-
-function fail() {
-    alert("FAILS");
-    console.log("failed to get filesystem");
-}
-
-function checkConnection(){
-    if(navigator.connection.type == Connection.NONE){        
+function isOnline () {
+    // body...
+    if(navigator.connection.type == Connection.NONE){
         return false;
     }
     else{
@@ -96,110 +75,233 @@ function checkConnection(){
     }
 }
 
-function gotFS(fileSystem) {   
-    
-    console.log("filesystem got");
-    //Create Folders
-    alert("file system" + fileSystem.root);
-    createFolders(fileSystem);
+function gotFS (fileSystem) {
+    // body...
+    console.log('Got FileSystem');    
+    statusDom.innerHTML = fileSystem.root;
+
+    fileSystem.root.getDirectory(appDirectory, {
+        create : true,
+        exclusive : false 
+        },
+        function (entry) {
+            localStorage.setItem('appDirectory', entry.toURL());
+            statusDom.innerHTML = entry.toURL();
+
+            //$('#btnDownload').on('click', download ('http://www.google.com', localStorage.getItem('appDirectory')));
+            $('#btnDownload').off().on('click', download ('http://103.254.238.7/nasp/assets_old.zip', localStorage.getItem('appDirectory')));
+            alert(localStorage.getItem('appDirectory'));
+        },
+        fail
+    );
 }
 
-function createFolders(fileSystem){
-    alert(fileSystem.root);
-    for (var i = 0; i < totalFolders; i++) {
-        fileSystem.root.getDirectory(folderArray[i], {
-            create : true,
-            exclusive : false
-        }, 
-        function(entry){           
-            var fileName = entry.toURL();
-            var index = $.inArray(fileName.split('/')[fileName.split('/').length - 1].toLowerCase(), folderArray);
-            alert(index);
-            alert(fileName);  
-            folderPathArray[index] = fileName;                       
-            //(checkConnection()) ? downloadZip(index, entry) : alert("No internet connection");
-        }, fail);  
-    };
-}
+function download (source, target) {
+    // body...
+    alert('Downloading...');
+    var fileName = new Date().getTime() + '.zip';
+    var filePath = target + '/' + fileName;
 
-function download () {
-    if (checkConnection()) {   
-        for(var i = totalFolders; i >= 0; i--) {
-            downloadZip (folderPathArray[i], downloadArray[i]);
-        }
-    }
-    else
-        alert("No internet connection");
-}
-
-function downloadZip (source, target) {    
-    
-    console.log('download file' + source);
-
-    var fileName = new Date().getTime() + ".zip";
-    var filePath = target.toURL() + "/" + fileName;
-    
     ft = new FileTransfer();
 
-    ft.onprogress = function(progressEvent) {
-
+    ft.onprogress = function (progressEvent) {
+        // body...
         if (progressEvent.lengthComputable) {
-            var perc = Math.floor(progressEvent.loaded / progressEvent.total * 100);
-            statusDom.innerHTML = perc + "% loaded...";
-        } else {
-            if(statusDom.innerHTML == "") {
-                statusDom.innerHTML = "Loading";
-            } else {
-                statusDom.innerHTML += ".";
+            var perc = Math.floor (progressEvent.loaded / progressEvent.total * 100);
+            statusDom.innerHTML = perc + '% loaded...';
+        }
+        else{
+            if (statusDom.innerHTML == '') {
+                statusDom.innerHTML = 'Loading';
+            } else{
+                statusDom.innerHTML += '.';
             }
         }
-    };
+    }
 
-    $.mobile.loading('show');
     ft.download(
-        source,        
+        source,
         filePath,
-        function(entry) {
-            alert(entry.toURL());
-            downloadError[index] = "0";
-            console.log("download complete: " + entry.fullPath);
+        function (entry) {
+            // body...
+            console.log('Download Complete:'  + entry.fullPath);
+            statusDom.innerHTML = 'Downloaded';
 
-            zip.unzip(target.toURL() + "/" + fileName, target.toURL(), zipSuccess);
+            zip.unzip (filePath, target, zipSuccess);
 
-            statusDom.innerHTML = "Extracting...";
-           
-            function zipSuccess(param){
+            function zipSuccess (param) {
+                // body...
+                if (param == 0) {
+                    alert('Download and extraction Complete');
+                    
+                    statusDom.innerHTML = 'Extraction Complete';
 
-                if(param == 0){                    
-                    alert("Download and extraction complete");             
+                    readJSON();
 
-                    // remove the file
                     entry.remove();
-                    statusDom.innerHTML = "Extraction Complete";
-                    $.mobile.loading('hide');
-                }else{
-                    alert("Extraction Failed");
+                } else{
+                    alert('Extraction Failed');
                 }
             }
         },
-        function(error) {
-            console.log("download error source " + error.source);
-            console.log("download error target " + error.target);
-            console.log("upload error code" + error.code);
-            var fileName = error.target;
-            alert(fileName);
-            var index = $.inArray(fileName.split('/')[fileName.split('/').length - 2].toLowerCase(), folderArray);
-            alert("The file " + folderArray[index] + " could not be downloaded completely");
-            downloadError[index]  = "1";
+        function (error) {
+            // body...
+            console.log('download error source' + error.source);
+            console.log('download error target' + error.target);
+            console.log('upload error code' + error.code);
         }
     );
 }
 
-function downloadAgain (){
-    alert("Download Again");
-    for (var i = totalFolders; i >= 0; i--) {
-        if (downloadError[i] == "1") {
-            alert("Download" + downloadArray[i]);
-        };
-    };
+function fail (error) {
+    // body...
+    alert('Fails');
+    console.log('A fileSystem error occurred: ' + error);
+}
+
+function checkFileExists (fileName){
+    var http = new XMLHttpRequest();
+    http.open('HEAD', fileName, false);
+    http.send(null);
+    return (http.status != 404);
+};
+
+//Read Extracted Contents
+function readJSON () {
+    // body...   
+    var directory = localStorage.getItem('appDirectory');
+    var jsonfile = directory + '/assets_old/Media.json';     
+
+    $.ajax({
+        url: jsonfile,
+        type: 'GET',
+        success: function (data){
+            alert('success');
+            data = $.parseJSON(data);
+            $.each( data, function (key, val) {   
+
+                for (var i = 0; i < val.length ; i++){
+                    if (key == 'Audios'){
+                        audios.push(val[i]);
+                        alert(val[i].url);
+                    }
+                    if (key == 'Videos'){
+                        videos.push(val[i]);
+                    }
+                    if (key == 'Images'){
+                        images.push(val[i]);
+                    }
+                    if (key == 'Description'){
+                        description.push(val[i]);
+                    }              
+                }
+            });     
+        },
+        error: function (xhr, error){
+           
+            console.log('readyState: '+xhr.readyState+'\nstatus: '+xhr.status);
+
+            if (xhr.responseText.length >= 10) {
+                alert('success in responseText');
+                data = $.parseJSON(xhr.responseText);
+
+                $.each( data, function (key, val) {   
+
+                    for (var i = 0; i < val.length ; i++){
+                        if (key == 'Audios'){
+                            audios.push(val[i]);
+                        }
+                        if (key == 'Videos'){
+                            videos.push(val[i]);
+                        }
+                        if (key == 'Images'){
+                            images.push(val[i]);
+                        }
+                        if (key == 'Description'){
+                            description.push(val[i]);
+                        }              
+                    }
+                });   
+            }
+        }
+    });
+}
+
+function loadMe (id) {
+    // body...
+    document.getElementById('fileContent').style.display = 'block';
+    if(id == 1){
+        document.getElementById('videoStream').src = videos[0].url; 
+        updateMedia(audios[0].url);
+    }
+    if(id == 2){        
+        alert('local media');
+        document.getElementById('videoStream').src = localStorage.getItem('appDirectory') + '/assets_old/' + videos[1].url;
+        updateMedia(localStorage.getItem('appDirectory') + '/assets_old/' + audios[1].url);
+    }
+    
+    
+}
+
+function updateMedia (src) {   
+    
+    // Clean up old file
+    if (myMedia != null && device.platform.toLowerCase() != 'ios') {
+        myMedia.release();
+    }
+
+    alert(device.platform);
+
+    if (device.platform.toLowerCase() == 'ios') {
+        myMedia = document.getElementById('btnAudioPlayer');
+        myMedia.src = src;
+    }
+    else{
+        // Get the new media file        
+        myMedia = new Media(src, stopAudio, null);
+        // Update media position every second]
+        var mediaTimer = setInterval(function() {
+            // get media position
+            myMedia.getCurrentPosition(
+            // success callback
+                function(position) {
+                    if (position > -1) {
+                        document.getElementById('audio_position').innerHTML = (position) + " sec";
+                    }
+                },
+                // error callback
+                function(e) {
+                    console.log("Error getting pos=" + e);
+                }
+            );
+        }, 1000);
+    }
+    
+    
+}
+
+
+function playAudio() {
+    if (!playing) {
+        myMedia.play();
+        document.getElementById('btnAudio').innerHTML = 'pause';
+        playing = true; 
+    } 
+    else {
+        myMedia.pause();
+        document.getElementById('btnAudio').innerHTML = 'play';
+        playing = false; 
+    }
+}
+ 
+function stopAudio() {
+    myMedia.stop();
+    playing = false;
+    document.getElementById('btnAudio').innerHTML = 'play';
+    document.getElementById('audio_position').innerHTML = "0.000 sec";
+}
+
+function setAudioPosition (position) {
+    // body...
+    document.getElementById('audio_position').innerHTML =position;
 }

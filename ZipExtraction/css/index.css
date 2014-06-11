@@ -58,6 +58,30 @@ body {
     margin:-115px 0px 0px -112px;  /* offset vertical: half of image height and text area height */
                                    /* offset horizontal: half of text area width */
 }
+.btnClass {
+    display: block;
+    padding: 10px;
+    border: 1px solid #FFFFFF;
+    background-color: #F0F0F0;
+    animation: fade 3000ms infinite;
+    -webkit-animation: fade 3000ms infinite;
+}
+
+#loadContent {
+    z-index: 1000;
+}
+
+#loadContent a {
+    width: 18%;
+    padding: 10px 0px;
+    display: inline-block;
+    border: 1px outset #f6f6f6;
+    background: #F5F5F5;
+}
+
+video {
+    max-width: 100%;
+}
 
 /* Landscape layout (with min-width) */
 @media screen and (min-aspect-ratio: 1/1) and (min-width:400px) {
